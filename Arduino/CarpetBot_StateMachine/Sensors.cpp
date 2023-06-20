@@ -10,7 +10,6 @@
     else{
       return 0;
     }
-
   }
 
 
@@ -21,7 +20,6 @@
     else{
       return 0;
     }
-
   }
 
 
@@ -36,18 +34,8 @@
   }
 
 
-  int objectDetectedBack(){
-    if((digitalRead(IR3) == LOW) && (digitalRead(IR4) == LOW)){
-      return 1;
-    }
-    else{
-      return 0;
-    }
-
-  }
-
   int waterLevel(int waterSensor){
-    Liquid_level = digitalRead(waterSensor)
+    Liquid_level = digitalRead(waterSensor);
     if(Liquid_level == 1){
       return 1;
     }
@@ -63,4 +51,28 @@
     else{
       return 0;
     }
+  }
+
+
+  int farBeaconDetected(){
+    if(digitalRead(farBeaconSensor)){
+      return 1;
+    }
+    else{
+      return 0;
+    }
+  }
+
+
+  int closeBeaconDetected(){
+    int val = 0;
+    val = analogRead(closeBeaconSensor);
+    return val;
+    // int sum = 0;
+    // int sample = 100;
+    // for (int i = 0; i < sample; i++) {
+    //   sum += analogRead(closeBeaconSensor);
+    // }
+    // // less than 400 not detecting
+    // return sum / sample;
   }
