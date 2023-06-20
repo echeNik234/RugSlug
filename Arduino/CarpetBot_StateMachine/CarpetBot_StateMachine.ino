@@ -1,24 +1,39 @@
 #include "Motors.h"
 #include "Sensors.h"
-// #include <Servo.h>
+#include <Servo.h>
 
 
 //global defines
-#define DEGREE_360 2096
-#define DEGREE_180 1048 
-#define DEGREE_90 524
-#define DEGREE_45 262 
+
 
 
 //global variables
-  //for calcuating encoder values
-// int pos = 0;
-// long prevT = 0;
-// float eprev = 0;
-// float eintegral = 0;
+  //timer 1
+unsigned long prevTime1 = 0;
+unsigned long curTime1;
+const long period1 = 3000;
 
-  //for servo
-// int servPos; // variable to store the servo position
+//timer 2
+unsigned long prevTime2 = 0;
+unsigned long curTime2;
+const int forwardDuration = 4000;
+
+//timer 3
+unsigned long prevTime3 = 0;
+unsigned long curTime3;
+const int turnDuration = 7000;
+
+int flag = 0;
+int numCycles = 8;
+int cycleCount = 0;
+bool turning = false;
+
+
+
+
+
+Servo clawServo; // create servo object to control claw of beacon grabber
+Servo waterServo; // create servo object to control solution dispensing
 
 typedef enum
 {
@@ -30,7 +45,7 @@ typedef enum
   PAUSE //robot functions are paused from app or when bot is tipped over
 } roboStates; 
 
-roboStates curState = CHARGING;
+roboStates curState = BEACONSEARCH;
 roboStates prevState = CHARGING;
 
 //function that sets up the output and input pins to be called in void setup()
@@ -40,29 +55,39 @@ void pinSetup(){
   pinMode(PWM1,OUTPUT); //we have to set PWM pin as output
   pinMode(IN1,OUTPUT); //Logic pins are also set as output
   pinMode(IN2,OUTPUT);
-  pinMode(ENCA,INPUT);
-  pinMode(ENCB,INPUT);
 
     //right motor
   pinMode(PWM2,OUTPUT); //we have to set PWM pin as output
   pinMode(IN3,OUTPUT); //Logic pins are also set as output
   pinMode(IN4,OUTPUT);
-  pinMode(ENCC,INPUT);
-  pinMode(ENCD,INPUT);
 
-//servo pin
-  myservo.attach(10);// attaches the servo to pin 10 to the servo object.
+//servo pins
+  clawServo.attach(clawPin);// attaches the claw servo to pin 11 to the servo object.
+  waterServo.attach(waterPin);// attaches the water servo to pin 12 to the servo object.
 
 //sensor pins
   pinMode(IR1, INPUT); // front right sensor
   pinMode(IR2, INPUT); // front left sensor
-  pinMode(IR3, INPUT); // back right sensor
-  pinMode(IR4, INPUT); // back left sensor
   pinMode(tiltSensor, INPUT); // tilt sensor
   pinMode(cleanWater, INPUT); // water level sensor for clean tank
   pinMode(cleanWater, INPUT); // water level sensor for dirty tank
-}
+  pinMode(farBeaconSensor, INPUT); // beacon detector for detecting from a distance
+  pinMode(closeBeaconSensor, INPUT); // beacon detector for detecting up close
+  prevTime2 = millis();
 
+//arm pins
+  pinMode(arm1, OUTPUT);
+  pinMode(arm2,OUTPUT);
+  pinMode(armPwm, OUTPUT);
+
+// brush pins
+  pinMode(brush1, OUTPUT);
+  pinMode(brush2,OUTPUT);
+  pinMode(brushPwm, OUTPUT);
+
+// fan pin  
+  pinMode(fanPin, OUTPUT);
+}
 
 
 
@@ -70,9 +95,6 @@ void pinSetup(){
 void setup() {
   // put your setup code here, to run once:
   pinSetup();
-  attachInterrupt(digitalPinToInterrupt(ENCA),readEncoder,RISING);
-  attachInterrupt(digitalPinToInterrupt(ENCC),readEncoder,RISING);
-  roboStates curState = CHARGING;
   Serial.begin(115200);
 }
 
@@ -99,10 +121,9 @@ void runRoboSwitchCase()
 
     //////////////////////////////////////////
     case FLUIDFILL:{
-      if (waterLevel(cleanWater) == 1){
+      if (waterLevel(cleanWater) == 1 && waterLevel(dirtyWater) == 0){
           curState = BEACONSEARCH;
       }
-
     break;
     }
     //////////////////////////////////////////
@@ -110,38 +131,68 @@ void runRoboSwitchCase()
 
     //////////////////////////////////////////
     case BEACONSEARCH:{
-      // beaconLift();
-      if(robotFallenOver() == 1 || ("signal from app to pause cleaning")){
+      if(robotFallenOver() == 1){
         prevState = BEACONSEARCH;
         curState = PAUSE;
       }
-      if("stain beacon detected"){
-        forwardDrive();
-      }
-      
-      if("stain beacon is not detected"){
-        rotate();
+
+      if(flag == 0){
+        reverseDrive();
       }
 
-      if(objectDetectedRight() == 1){
-        tankLeft(DEGREE_180);
+      if(curTime1 - prevTime1 >= period1){ //set prevTime equal to curTime at end of entire process
+        flag = 1;
+        stop();
       }
 
-      if(objectDetectedLeft() == 1){
-        tankRight(DEGREE_180);
-      }
+      if(flag == 1){ //reset at end of entire process
+        if(farBeaconDetected() == 1){
+          forwardDrive();
+                
+          if(objectDetectedLeft() == 1 && objectDetectedRight() == 0){
+            tankRight();
+            delay(1250);
+            forwardDrive();
+            delay(1000);
+          }
 
-      if (objectDetectedFront() == 1){
-        int i = 0;
-        if(i != 2){
-          reverseDrive(DEGREE_360);
-          i++;
+          if(objectDetectedRight() == 1 && objectDetectedLeft() == 0){
+            tankLeft();
+            delay(1250);
+            forwardDrive();
+            delay(1000);
+          }
+
+          if(objectDetectedFront() == 1){
+            tankRight();
+            delay(1250);
+            forwardDrive();
+            delay(1000);
+          }
+        }
+        if (farBeaconDetected() == 0){
+          rotate();
         }
       }
 
-      if ("stain beacon detected as close(implementation not figured out)"){
+
+      if((closeBeaconDetected() <= 0) && (closeBeaconDetected() >= -3)){
+        stop();
+        delay(1000);
+        clawOpen();
+        delay(1000);
+        beaconLower();
+        delay(7000);
+        clawStop();
+        forwardDrive();
+        delay(500);
+        stop();
+        clawClose();
+        delay(1000);
         beaconLift();
-        curState = CLEANING;        
+        delay(8000);
+        clawStop();
+        curState = CLEANING;
       }
       break;
     }
@@ -150,7 +201,46 @@ void runRoboSwitchCase()
 
     //////////////////////////////////////////
     case CLEANING:{
+      if(robotFallenOver() == 1){
+        prevState = CLEANING;
+        curState = PAUSE;
+      }
 
+      brushOn();
+      openWater();
+      //turn fan on
+
+      if(cycleCount != numCycles){
+
+        if(turning == false){
+          forwardScrub();
+        }
+
+        if(curTime2 - prevTime2 >= forwardDuration){
+          stop();
+          turning = true;
+        }
+
+        if(turning == true){
+          rotate();
+        }
+
+        if(curTime3 - prevTime3 >= turnDuration){
+          prevTime3 = curTime3;
+          prevTime2 = curTime2;
+          stop();
+          cycleCount += 1;
+          turning = false;
+        }
+      }     
+  
+      if(cycleCount == numCycles){
+        cycleCount = 0;
+        brushOff();
+        closeWater();
+        //turn off fan
+        curState = CHARGINGSEARCH; 
+      }
       break;
     }
     //////////////////////////////////////////
@@ -158,36 +248,33 @@ void runRoboSwitchCase()
 
     //////////////////////////////////////////
     case CHARGINGSEARCH:{
-      if(robotFallenOver() == 1 || ("signal from app to pause cleaning")){
-        prevState = CHARGINGSEARCH;
-        curState = PAUSE;
-      }
-      if("charge beacon detected"){
+      if(farBeaconDetected() == 1){
+
         forwardDrive();
-      }
-      
-      if("charge beacon is not detected"){
-        rotate();
-      }
+              
+        if(objectDetectedLeft() == 1 && objectDetectedRight() == 0){
+          tankRight();
+          delay(1250);
+          forwardDrive();
+          delay(1000);
+        }
 
-      if(objectDetectedRight() == 1){
-        tankLeft(DEGREE_180);
-      }
+        if(objectDetectedRight() == 1 && objectDetectedLeft() == 0){
+          tankLeft();
+          delay(1250);
+          forwardDrive();
+          delay(1000);
+        }
 
-      if(objectDetectedLeft() == 1){
-        tankRight(DEGREE_180);
-      }
-
-      if (objectDetectedFront() == 1){
-        int i = 0;
-        if(i != 2){
-          reverseDrive(DEGREE_360);
-          i++;
+        if(objectDetectedFront() == 1){
+          tankRight();
+          delay(1250);
+          forwardDrive();
+          delay(1000);
         }
       }
-
-      if("charge beacon detected as close(implementation not figured out)"){
-        curState = CHARGING;        
+      if (farBeaconDetected() == 0){
+        rotate();
       }
       break;
     }
@@ -200,9 +287,9 @@ void runRoboSwitchCase()
         curState = prevState;
       }
 
-      if("Signal from app to resume cleaning"){
-        curState = prevState;
-      }
+      // if("Signal from app to resume cleaning"){
+      //   curState = prevState;
+      // }
       break;
     }
     //////////////////////////////////////////
@@ -211,22 +298,73 @@ void runRoboSwitchCase()
 
 void loop() {
   // put your main code here, to run repeatedly:
-  runRoboSwitchCase();
-  //  forwardDrive();
-  //     if(objectDetectedRight() == 1){
-  //       tankLeft(DEGREE_180);
-  //     }
-  //     if(objectDetectedLeft() == 1){
-  //       tankRight(DEGREE_180);
-  //     }
-  //     if (objectDetectedFront() == 1){
-  //       int i = 0;
-  //       if(i != 2){
-  //         reverseDrive(DEGREE_360);
-  //         i++;
-  //       }
-  //       tankRight(DEGREE_180);
-  //     }
-   
+  curTime1 = millis();
+  curTime2 = millis();
+  curTime3 = millis();
 
+  runRoboSwitchCase();
+
+  // if(robotFallenOver() == 1){
+  //       prevState = BEACONSEARCH;
+  //       curState = PAUSE;
+  //     }
+
+  //     if(flag == 0){
+  //       reverseDrive();
+  //     }
+
+  //     if(curTime1 - prevTime1 >= period1){ //set prevTime equal to curTime at end of entire process
+  //       flag = 1;
+  //       stop();
+  //     }
+
+  //     if(flag == 1){ //reset at end of entire process
+  //       if(farBeaconDetected() == 1){
+  //         forwardDrive();
+                
+  //         if(objectDetectedLeft() == 1 && objectDetectedRight() == 0){
+  //           tankRight();
+  //           delay(1250);
+  //           forwardDrive();
+  //           delay(1000);
+  //         }
+
+  //         if(objectDetectedRight() == 1 && objectDetectedLeft() == 0){
+  //           tankLeft();
+  //           delay(1250);
+  //           forwardDrive();
+  //           delay(1000);
+  //         }
+
+  //         if(objectDetectedFront() == 1){
+  //           tankRight();
+  //           delay(1250);
+  //           forwardDrive();
+  //           delay(1000);
+  //         }
+  //       }
+  //       if (farBeaconDetected() == 0){
+  //         rotate();
+  //       }
+  //     }
+
+
+  //     if((closeBeaconDetected() <= 0) && (closeBeaconDetected() >= -3)){
+  //       stop();
+  //       delay(1000);
+  //       clawOpen();
+  //       delay(1000);
+  //       beaconLower();
+  //       delay(7000);
+  //       clawStop();
+  //       forwardDrive();
+  //       delay(500);
+  //       stop();
+  //       clawClose();
+  //       delay(1000);
+  //       beaconLift();
+  //       delay(8000);
+  //       clawStop();
+  //       curState = CLEANING;
+  //     }
 }
