@@ -1,0 +1,230 @@
+#include <SPI.h>
+#include <WiFiNINA.h>
+#include "wifi_network.h"
+
+// Wi-Fi credentials
+char ssid[] = SECRET_SSID;        // your network SSID (name)
+char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
+
+// Web server settings
+WiFiServer server(80);
+
+// Motor control pins
+int enA = 2;    // Enable pin for Motor A
+int in1 = 6;    // Control pin 1 for Motor A
+int in2 = 7;    // Control pin 2 for Motor A
+int enB = 3;    // Enable pin for Motor B
+int in3 = 8;    // Control pin 1 for Motor B
+int in4 = 9;    // Control pin 2 for Motor B
+
+// Brush motor
+int brushPWM = 4;
+int brushIn3 = 13;
+int brushIn4 = 14;
+
+// Fan pin
+int fanPin = 12;
+
+// WiFi Pin
+int wifiPin = 10;
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(115200);
+
+  // Connect to Wi-Fi network
+  pinMode(wifiPin, OUTPUT);
+  digitalWrite(wifiPin, LOW);
+  int flag = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print("Attempting to connect to Wi-Fi...");
+    WiFi.begin(ssid, pass);
+    delay(1000);
+    if (flag == 1) {
+      digitalWrite(wifiPin, LOW);
+      flag = 0;
+    } else {
+      digitalWrite(wifiPin, HIGH);
+      flag = 1;
+    }
+  }
+
+  // Print Wi-Fi connection details
+  digitalWrite(wifiPin, HIGH);
+  Serial.println("Connected to Wi-Fi");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Set motor control pins as outputs
+  pinMode(enA, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+  pinMode(brushPWM, OUTPUT);
+  pinMode(brushIn3, OUTPUT);
+  pinMode(brushIn4, OUTPUT);
+  pinMode(fanPin, OUTPUT);
+
+  // Start the web server
+  server.begin();
+  Serial.println("Web server started");
+}
+
+void loop() {
+  // Check for client connection
+  WiFiClient client = server.available();
+  if (client) {
+    Serial.println("New client connected");
+    String request = "";
+
+    // Read the HTTP request from the client
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        request += c;
+        if (c == '\n') {
+          break;
+        }
+      }
+    }
+
+    // Process the HTTP request
+    if (request.indexOf("/motor/brake") != -1) {
+      brake();
+    }
+    else if (request.indexOf("/motor/forward") != -1) {
+      forward();
+    }
+    else if (request.indexOf("/motor/backward") != -1) {
+      backward();
+    }
+    else if (request.indexOf("/motor/left") != -1) {
+      left();
+    }
+    else if (request.indexOf("/motor/right") != -1) {
+      right();
+    }
+    else if (request.indexOf("/clean/on") != -1) {
+      brushON();
+      delay(1000);
+      digitalWrite(fanPin, HIGH);
+    }
+    else if (request.indexOf("/clean/off") != -1) {
+      brushOFF();
+      delay(1000);
+      digitalWrite(fanPin, LOW);
+    }
+
+    // Send the HTTP response
+    sendHttpResponse(client);
+    client.stop();
+    Serial.println("Client disconnected");
+  }
+}
+
+void forward() {
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  analogWrite(enA, 255);
+  analogWrite(enB, 255);
+}
+
+void backward() {
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+  analogWrite(enA, 255);
+  analogWrite(enB, 255);
+}
+
+void left() {
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  analogWrite(enA, 255);
+  analogWrite(enB, 255);
+}
+
+void right() {
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+  analogWrite(enA, 255);
+  analogWrite(enB, 255);
+}
+
+void brake() {
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, LOW);
+  analogWrite(enA, 0);
+  analogWrite(enB, 0);
+}
+
+void brushON() {
+  //For brake
+  digitalWrite(brushIn3, LOW);
+  digitalWrite(brushIn4, HIGH);
+  delay(1000);
+  analogWrite(brushPWM, 255);
+}
+
+void brushOFF() {
+  //For brake
+  digitalWrite(brushIn3, HIGH);
+  digitalWrite(brushIn4, HIGH);
+  delay(1000);
+  analogWrite(brushPWM, 0);
+}
+
+void sendHttpResponse(WiFiClient client) {
+  // Send the HTTP response headers
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println("Connection: close");
+  client.println();
+
+  // Send the HTML content
+  client.println("<!DOCTYPE HTML>");
+  client.println("<html>");
+  client.println("<head><title>Remote Control</title></head>");
+  client.println("<body>");
+  client.println("<h1>Remote Control</h1>");
+  client.println("<form action='/motor/brake' method='get'>");
+  client.println("<input type='submit' value='Brake'>");
+  client.println("</form>");
+  client.println("<br>");
+  client.println("<form action='/motor/forward' method='get'>");
+  client.println("<input type='submit' value='Forward'>");
+  client.println("</form>");
+  client.println("<br>");
+  client.println("<form action='/motor/backward' method='get'>");
+  client.println("<input type='submit' value='Backward'>");
+  client.println("</form>");
+  client.println("<br>");
+  client.println("<form action='/motor/left' method='get'>");
+  client.println("<input type='submit' value='Left'>");
+  client.println("</form>");
+  client.println("<br>");
+  client.println("<form action='/motor/right' method='get'>");
+  client.println("<input type='submit' value='Right'>");
+  client.println("</form>");
+  client.println("<br>");
+  client.println("<form action='/clean/on' method='get'>");
+  client.println("<input type='submit' value='Clean'>");
+  client.println("</form>");
+  client.println("<br>");
+  client.println("<form action='/clean/off' method='get'>");
+  client.println("<input type='submit' value='Stop'>");
+  client.println("</form>");
+  client.println("</body>");
+  client.println("</html>");
+}
