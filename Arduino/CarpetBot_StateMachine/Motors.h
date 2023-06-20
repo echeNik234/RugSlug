@@ -2,40 +2,61 @@
 #define MOTORS_H
 
 #include <Arduino.h>
-#include <Servo.h>
-  // Pins and ports needed for the H-bridge to controll the encoder motors
+  // Pins and ports needed for the H-bridge to control the encoder motors
   #define PWM1 3
   #define PWM2 5
-  #define IN1 22
-  #define IN2 24
-  #define IN3 23
-  #define IN4 25
-  #define ENCA 27
-  #define ENCB 29
-  #define ENCC 26
-  #define ENCD 28
+  #define IN1 51
+  #define IN2 53
+  #define IN3 52
+  #define IN4 50
+  
+  //Pins and ports for the claw arm motor
+  #define arm1 47
+  #define arm2 46
+  #define armPwm 2
+  #define brush1 28
+  #define brush2 27
+  #define brushPwm 9
   /////////////////////////////////////////////////////////////////////////
 
-  #define roboServo 10 //pin to connect charging station servo to
+  #define clawPin 12 //pin to connect claw servo to pwm pin 12
+  #define waterPin 13 //pin to connect water dispense servo to pwm pin 13
+  #define fanPin 29 //pin to connect fan to pin 29
 
+  void stop();
 
   void rotate();
   
   void forwardDrive();
 
-  void reverseDrive(int val);
+  void reverseDrive();
 
-  void tankLeft(int val);
+  void tankLeft();
 
-  void tankRight(int val);
+  void tankRight();
 
   void beaconLift();
   
-  void setPosition(int pos, int pwm, int in1, int in2);
+  void beaconLower();
 
-  void setMotor(int dir, int pwmVal, int pwm, int in1, int in2);
+  void clawOpen();
 
-  void readEncoder();
+  void clawClose();
 
+  void clawStop();
+
+  void openWater();
+
+  void closeWater();
+
+  void brushOn();
+
+  void brushOff();
+
+  void fanOn();
+
+  void fanOff();
+
+  void forwardScrub();
 
 #endif
