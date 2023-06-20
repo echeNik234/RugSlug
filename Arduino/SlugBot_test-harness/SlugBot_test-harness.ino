@@ -1,5 +1,5 @@
 //motor test
-int motorPin = 3;
+int motorPin = 31;
 
 //HBridge test
 const int pwm = 2 ; //initializing pin 2 as pwm
@@ -7,7 +7,7 @@ const int in_1 = 22 ;
 const int in_2 = 24 ;
 
 //IR test
-int IRSensor = 36;
+int IRSensor = 7;
 
 // Servo test, knob and sweep
 #include <Servo.h>
@@ -17,10 +17,10 @@ int val; // variable to read the value from the analog pin, knob
 int pos; // variable to store the servo position, sweep
 
 // Bumper switch test
-int Lswitch = 4;
+int Lswitch = 6;
 
 // Motor + encoder test
-#define ENC_IN_RIGHT_A 7
+// #define ENC_IN_RIGHT_A 7
 volatile long right_wheel_pulse_count = 0;
 
 // Water Level test
@@ -28,6 +28,9 @@ int Liquid_level = 0;
 
 //tilt sensor test
 const int tiltPin = 1;
+
+//becon detector test
+const int beacon = 38;
 
 // #define motor_test
 // #define HBridge_test
@@ -37,7 +40,8 @@ const int tiltPin = 1;
 // #define BumperSwitch_test
 // #define MotorEncoder_test
 // #define WaterLevel_test
-#define TiltSensor_test
+// #define TiltSensor_test
+#define BEACON_DETECTOR_TEST
 
 
 
@@ -61,7 +65,7 @@ void setup() {
 
 
   #ifdef BumperSwitch_test
-    Serial.begin(115200);
+    Serial.begin(96);
     pinMode(Lswitch, INPUT); 
   #endif
 
@@ -83,6 +87,12 @@ void setup() {
     Serial.begin(115200);
     pinMode(tiltPin, INPUT);
     digitalWrite(tiltPin, HIGH);
+  #endif
+
+
+  #ifdef BEACON_DETECTOR_TEST
+    Serial.begin(115200);
+    pinMode(beacon, INPUT);
   #endif
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +203,17 @@ void loop() {
       Serial.print("not tilted\n");
     }
     delay(2000);  
+  #endif
+
+
+  #ifdef BEACON_DETECTOR_TEST
+    if(digitalRead(beacon)){
+      Serial.print("beacon detected\n");      
+    }
+    else{
+      Serial.print("beacon not detected\n");
+    }
+    delay(2000);
   #endif
 }
 
