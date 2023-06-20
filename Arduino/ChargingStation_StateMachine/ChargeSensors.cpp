@@ -2,43 +2,61 @@
 #include <Arduino.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-
-
-  // Data wire is plugged into pin 2 on the Arduino
-  #define ONE_WIRE_BUS 6
-  // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
-  OneWire oneWire(ONE_WIRE_BUS);
-  // Pass our oneWire reference to Dallas Temperature. 
-  DallasTemperature sensors(&oneWire);
+#include <ezButton.h>
   
   int Liquid_level = 0;
+  int state;
 
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire twoWire(ONE_WIRE_BUS);
+// Pass our oneWire reference to Dallas Temperature. 
+DallasTemperature sensor1(&twoWire);
+
+ezButton limitSwitch1(Lswitch);  // create ezButton object that attach to pin 7;
 
   float getTemp(){
     float temperature;
-    sensors.requestTemperatures();
-    temperature = sensors.getTempFByIndex(0);
+    sensor1.requestTemperatures();
+    temperature = sensor1.getTempFByIndex(0);
     return temperature;
   }
 
 
   int bumperTriggered(){
-    if( (digitalRead(Lswitch) == LOW)){
-      return 1;
-    }
+    limitSwitch1.loop(); // MUST call the loop() function first
 
-    if( (digitalRead(Lswitch) == HIGH)){
-      return 0;
-    }
+  // if(limitSwitch1.isPressed())
+  //   Serial.println("The limit switch: UNTOUCHED -> TOUCHED");
+
+  // if(limitSwitch1.isReleased())
+  //   Serial.println("The limit switch: TOUCHED -> UNTOUCHED");
+
+  state = limitSwitch1.getState();
+  if(state == HIGH)
+    // Serial.println("The limit switch: UNTOUCHED");
+    return 0;
+  else
+    // Serial.println("The limit switch: TOUCHED");
+    return 1;
   }
 
 
   int waterLevel(){
-    Liquid_level = digitalRead(waterTank)
+    Liquid_level = digitalRead(waterTank);
     if(Liquid_level == 1){
       return 1;
     }
     else{
       return 0;
     }
+  }
+
+
+  void heatOn(){
+    digitalWrite(waterHeater, HIGH);
+  }
+
+
+  void heatOff(){
+    digitalWrite(waterHeater, LOW);
   }
