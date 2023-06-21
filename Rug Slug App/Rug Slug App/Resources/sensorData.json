@@ -1,0 +1,10 @@
+[
+    {
+        "connected": true,
+        "charging": true,
+        "battery": true,
+        "waste": true,
+        "solution": true,
+        "cleaning": false,
+    }
+]
