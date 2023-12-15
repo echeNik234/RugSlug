@@ -6,11 +6,11 @@
   #define PWM1 3
   #define PWM2 5
   #define IN1 51
-  #define IN2 53
-  #define IN3 52
-  #define IN4 50
+  #define IN2 49
+  #define IN3 50
+  #define IN4 48
   
-  //Pins and ports for the claw arm motor
+  //Pins and ports for the claw arm motor and scrubbing brush
   #define arm1 47
   #define arm2 46
   #define armPwm 2
@@ -21,7 +21,7 @@
 
   #define clawPin 12 //pin to connect claw servo to pwm pin 12
   #define waterPin 13 //pin to connect water dispense servo to pwm pin 13
-  #define fanPin 29 //pin to connect fan to pin 29
+  #define fanPin 53 //pin to connect fan to pin 53
 
   void stop();
 
@@ -39,11 +39,11 @@
   
   void beaconLower();
 
+  void clawStop();
+
   void clawOpen();
 
   void clawClose();
-
-  void clawStop();
 
   void openWater();
 
