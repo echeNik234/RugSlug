@@ -1,2 +1,2 @@
 # RugSlug
-Capstone shit fml
+Capstone
